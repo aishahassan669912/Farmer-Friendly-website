@@ -4,9 +4,10 @@ import Footer from "./components/Footer";
 
 import Home from "./pages/Home";
 import About from "./pages/About";
-// import Drought from "./pages/Drought";
-// import Tips from "./pages/Tips";
-// import Contact from "./pages/Contact";
+import DroughtAwareness from "./pages/DroughtAwareness"; 
+import Tips from "./pages/FarmingTips";
+import Contact from "./pages/Contact";
+import Signup from "./pages/Signup"; // ✅ Import Signup page
 
 function App() {
   return (
@@ -17,9 +18,10 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
-            {/* <Route path="/drought-awareness" element={<Drought />} />
+            <Route path="/drought-awareness" element={<DroughtAwareness />} />
             <Route path="/farming-tips" element={<Tips />} />
-            <Route path="/contact" element={<Contact />} /> */}
+            <Route path="/contact" element={<Contact />} />  
+            <Route path="/signup" element={<Signup />} /> {/* ✅ New Signup route */}
           </Routes>
         </main>
         <Footer />

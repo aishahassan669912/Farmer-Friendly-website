@@ -1,85 +1,116 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Leaf } from "lucide-react";
+import { Link } from "react-router-dom";
 
-const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const location = useLocation();
-
-  const navItems = [
-    { name: "Home", path: "/" },
-    { name: "About", path: "/about" },
-    { name: "Drought Awareness", path: "/drought-awareness" },
-    { name: "Farming Tips", path: "/farming-tips" },
-    { name: "Contact", path: "/contact" },
-  ];
-
-  const isActive = (path) => location.pathname === path;
+export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="bg-green-900/95 backdrop-blur-sm border-b border-green-700 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
-            <div className="bg-green-600 rounded-lg p-2 group-hover:scale-105 transition-transform duration-300">
-              <Leaf className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white">AgriSupport</span>
+    <header className="bg-green-800 text-white shadow-md">
+      <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-4">
+        {/* Logo */}
+        <Link to="/" className="text-2xl font-bold">
+          Farmer-Friendly
+        </Link>
+
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center space-x-6">
+          <Link to="/" className="hover:underline">
+            Home
+          </Link>
+          <Link to="/about" className="hover:underline">
+            About
+          </Link>
+          <Link to="/drought-awareness" className="hover:underline">
+            Drought Awareness
+          </Link>
+          <Link to="/farming-tips" className="hover:underline">
+            Farming Tips
+          </Link>
+          <Link to="/contact" className="hover:underline">
+            Contact
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`font-medium transition-colors duration-300 ${
-                  isActive(item.path)
-                    ? "text-green-400 border-b-2 border-green-400 pb-1"
-                    : "text-gray-300 hover:text-green-400"
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </div>
+          {/* Sign Up button */}
+          <Link
+            to="/signup"
+            className="ml-4 bg-white text-green-800 px-4 py-2 rounded-lg font-semibold hover:bg-green-100 transition"
+          >
+            Sign Up
+          </Link>
+        </nav>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-white focus:outline-none"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-green-700">
-            <div className="flex flex-col space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`font-medium py-2 px-4 rounded-lg transition-colors duration-300 ${
-                    isActive(item.path)
-                      ? "bg-green-800 text-green-300"
-                      : "text-gray-300 hover:text-green-400 hover:bg-green-800/50"
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="md:hidden focus:outline-none"
+          aria-label="Toggle menu"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {menuOpen ? (
+              <path d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
       </div>
-    </nav>
-  );
-};
 
-export default Navbar;
+      {/* Mobile nav */}
+      {menuOpen && (
+        <nav className="md:hidden bg-green-700 px-6 py-4 space-y-4">
+          <Link
+            to="/"
+            className="block hover:underline"
+            onClick={() => setMenuOpen(false)}
+          >
+            Home
+          </Link>
+          <Link
+            to="/about"
+            className="block hover:underline"
+            onClick={() => setMenuOpen(false)}
+          >
+            About
+          </Link>
+          <Link
+            to="/drought-awareness"
+            className="block hover:underline"
+            onClick={() => setMenuOpen(false)}
+          >
+            Drought Awareness
+          </Link>
+          <Link
+            to="/farming-tips"
+            className="block hover:underline"
+            onClick={() => setMenuOpen(false)}
+          >
+            Farming Tips
+          </Link>
+          <Link
+            to="/contact"
+            className="block hover:underline"
+            onClick={() => setMenuOpen(false)}
+          >
+            Contact
+          </Link>
+          {/* Sign Up mobile button */}
+          <Link
+            to="/signup"
+            className="block bg-white text-green-800 px-4 py-2 rounded-lg font-semibold hover:bg-green-100 transition"
+            onClick={() => setMenuOpen(false)}
+          >
+            Sign Up
+          </Link>
+        </nav>
+      )}
+    </header>
+  );
+}
