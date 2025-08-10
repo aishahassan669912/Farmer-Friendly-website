@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { Leaf } from "lucide-react"; // ✅ Leaf icon
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -8,8 +9,11 @@ export default function Navbar() {
     <header className="bg-green-800 text-white shadow-md">
       <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-4">
         {/* Logo */}
-        <Link to="/" className="text-2xl font-bold">
-          Farmer-Friendly
+        <Link to="/" className="text-2xl font-bold flex items-center gap-2">
+        <div className="bg-green-600 rounded-lg p-2">
+          <Leaf className="h-6 w-6 text-white" />
+        </div>
+          AgriSupport
         </Link>
 
         {/* Desktop nav */}
@@ -29,13 +33,22 @@ export default function Navbar() {
           <Link to="/contact" className="hover:underline">
             Contact
           </Link>
+          {/* <Link to="/contactlist" className="hover:underline">
+            ContactList
+          </Link> */}
 
-          {/* Sign Up button */}
+          {/* Auth buttons */}
           <Link
             to="/signup"
             className="ml-4 bg-white text-green-800 px-4 py-2 rounded-lg font-semibold hover:bg-green-100 transition"
           >
             Sign Up
+          </Link>
+          <Link
+            to="/login"
+            className="ml-2 bg-white text-green-800 px-4 py-2 rounded-lg font-semibold hover:bg-green-100 transition"
+          >
+            Login
           </Link>
         </nav>
 
@@ -66,48 +79,39 @@ export default function Navbar() {
       {/* Mobile nav */}
       {menuOpen && (
         <nav className="md:hidden bg-green-700 px-6 py-4 space-y-4">
-          <Link
-            to="/"
-            className="block hover:underline"
-            onClick={() => setMenuOpen(false)}
-          >
+          <Link to="/" className="block hover:underline" onClick={() => setMenuOpen(false)}>
             Home
           </Link>
-          <Link
-            to="/about"
-            className="block hover:underline"
-            onClick={() => setMenuOpen(false)}
-          >
+          <Link to="/about" className="block hover:underline" onClick={() => setMenuOpen(false)}>
             About
           </Link>
-          <Link
-            to="/drought-awareness"
-            className="block hover:underline"
-            onClick={() => setMenuOpen(false)}
-          >
+          <Link to="/drought-awareness" className="block hover:underline" onClick={() => setMenuOpen(false)}>
             Drought Awareness
           </Link>
-          <Link
-            to="/farming-tips"
-            className="block hover:underline"
-            onClick={() => setMenuOpen(false)}
-          >
+          <Link to="/farming-tips" className="block hover:underline" onClick={() => setMenuOpen(false)}>
             Farming Tips
           </Link>
-          <Link
-            to="/contact"
-            className="block hover:underline"
-            onClick={() => setMenuOpen(false)}
-          >
-            Contact
+          <Link to="/contact" className="block hover:underline" onClick={() => setMenuOpen(false)}>
+            Contactlist
           </Link>
-          {/* Sign Up mobile button */}
+            {/* <Link to="/contact" className="block hover:underline" onClick={() => setMenuOpen(false)}>
+            ContactList
+          </Link> */}
+
+          {/* Auth buttons */}
           <Link
             to="/signup"
             className="block bg-white text-green-800 px-4 py-2 rounded-lg font-semibold hover:bg-green-100 transition"
             onClick={() => setMenuOpen(false)}
           >
             Sign Up
+          </Link>
+          <Link
+            to="/login"
+            className="block bg-white text-green-800 px-4 py-2 rounded-lg font-semibold hover:bg-green-100 transition"
+            onClick={() => setMenuOpen(false)}
+          >
+            Login
           </Link>
         </nav>
       )}

@@ -1,27 +1,44 @@
 import React from "react";
 
 const About = () => {
+  // Smooth scroll with offset fix
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 80; // adjust this if your navbar is taller
+      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: "smooth",
+      });
+    }
+  };
+
   return (
     <>
       {/* About Section */}
       <section
         id="about"
-        className="flex flex-col items-center justify-center max-md:px-4 py-16 bg-white relative"
+        className="flex flex-col items-center justify-center max-md:px-4 py-16 bg-gradient relative"
         style={{ fontFamily: "'Poppins', sans-serif" }}
       >
         {/* Text Content */}
-        <div className="text-sm text-slate-600 max-w-lg text-center md:text-left">
-          <h1 className="text-xl uppercase font-semibold text-green-700">
+        <div className="text-sm text-slate-800 max-w-lg text-center md:text-left">
+          <h1 className="text-4xl uppercase font-semibold text-green-800">
             About AgriSupport
           </h1>
-          <div className="w-24 h-[3px] rounded-full bg-gradient-to-r from-green-600 to-green-200 mx-auto md:mx-0"></div>
-          <p className="mt-8">
+          <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-6">
+          <p>
             Born from a passion for sustainable agriculture and driven by the
             urgent need to address climate challenges, AgriSupport is dedicated
             to empowering farmers with the knowledge and tools they need to
             thrive in a changing environment.
           </p>
-          <button className="flex items-center justify-center md:justify-start gap-2 mt-8 hover:-translate-y-0.5 transition bg-gradient-to-r from-green-600 to-green-400 py-3 px-8 rounded-full text-white">
+          </div>
+          <button
+            onClick={() => scrollToSection("our-story")}
+            className="flex items-center justify-center md:justify-start gap-2 mt-8 hover:-translate-y-0.5 transition bg-gradient-to-r from-green-600 to-green-400 py-3 px-8 rounded-full text-white"
+          >
             <span>Read more</span>
             <svg
               width="13"
@@ -40,7 +57,7 @@ const About = () => {
       </section>
 
       {/* Our Story Section */}
-      <section className="py-16 bg-gradient-to-b from-green-50 to-white">
+      <section id="our-story" className="py-16 bg-gradient-to-b from-green-50 to-white">
         <div className="max-w-4xl mx-auto px-6">
           {/* Section Header */}
           <div className="text-center mb-12">
@@ -147,16 +164,7 @@ const About = () => {
             </div>
           </div>
 
-          {/* Active Workplace Links */}
-          <div className="text-center">
-            <h3 className="text-xl font-semibold text-green-800 mb-6">Active Workplace</h3>
-            <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-              <a href="#" className="text-green-700 hover:text-green-600 font-medium">About</a>
-              <a href="#" className="text-green-700 hover:text-green-600 font-medium">Drought Awareness</a>
-              <a href="#" className="text-green-700 hover:text-green-600 font-medium">Farming Tips</a>
-              <a href="#" className="text-green-700 hover:text-green-600 font-medium">Contact</a>
-            </div>
-          </div>
+         
         </div>
       </section>
 
@@ -237,17 +245,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* Mission Continues Section */}
-      <div className="max-w-4xl mx-auto px-6 mt-12 mb-16">
-        <div className="bg-green-50 rounded-lg p-6 border border-green-100">
-          <h3 className="text-xl font-semibold text-green-700 mb-4">
-            Our Mission Continues
-          </h3>
-          <p className="text-gray-700">
-            Today, AgriSupport serves thousands of farmers across multiple countries, providing actionable insights and practical solutions for sustainable agriculture.
-          </p>
-        </div>
-      </div>
+     
     </>
   );
 };

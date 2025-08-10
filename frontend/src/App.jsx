@@ -7,7 +7,8 @@ import About from "./pages/About";
 import DroughtAwareness from "./pages/DroughtAwareness"; 
 import Tips from "./pages/FarmingTips";
 import Contact from "./pages/Contact";
-import Signup from "./pages/Signup"; // ✅ Import Signup page
+import Signup from "./pages/Signup"; 
+import Login from "./pages/Login";
 
 function App() {
   return (
@@ -21,7 +22,8 @@ function App() {
             <Route path="/drought-awareness" element={<DroughtAwareness />} />
             <Route path="/farming-tips" element={<Tips />} />
             <Route path="/contact" element={<Contact />} />  
-            <Route path="/signup" element={<Signup />} /> {/* ✅ New Signup route */}
+            <Route path="/signup" element={<Signup />} /> 
+            <Route path="/login" element={<Login />} /> 
           </Routes>
         </main>
         <Footer />

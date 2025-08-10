@@ -12,13 +12,13 @@ export default function Contact() {
   const contacts = [
     {
       title: "Email Us",
-      value: "support@agrisupport.com",
+      value: "aishahassan@gmail.com",
       description: "Send us your questions anytime",
       icon: <FaEnvelope className="text-green-500 w-5 h-5" />,
     },
     {
       title: "Call Us",
-      value: "+1 (555) 123-4567",
+      value: "+254757398464",
       description: "Mon–Fri, 8AM–6PM local time",
       icon: <FaPhoneAlt className="text-orange-500 w-5 h-5" />,
     },

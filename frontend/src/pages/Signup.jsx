@@ -18,12 +18,19 @@ const Signup = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: Add form submission logic here
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+
+    // Replace with actual API call
     console.log("Signup data:", formData);
+    alert("Form submitted successfully!");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gary-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
       <div className="bg-white shadow-lg rounded-xl max-w-md w-full p-8">
         <h2 className="text-2xl font-bold text-center text-green-800 mb-6">
           Create Your Account
@@ -42,7 +49,7 @@ const Signup = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="John Doe"
+                placeholder="Aisha Hassan"
                 required
                 className="w-full p-3 focus:outline-none rounded-lg"
               />
@@ -61,7 +68,7 @@ const Signup = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="you@example.com"
+                placeholder="aishahassan669912@gmail.com"
                 required
                 className="w-full p-3 focus:outline-none rounded-lg"
               />
