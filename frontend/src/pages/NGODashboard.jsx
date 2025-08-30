@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/DashboardLayout";
-import { FileText, MapPin, AlertTriangle, User, Phone, Mail, Calendar, Eye, PhoneCall } from "lucide-react";
-import { getDroughtReports } from "../utils/auth";
+import { FileText, MapPin, AlertTriangle, User, Phone, Mail, Calendar, Eye, PhoneCall, X, BarChart3, TrendingUp, Users, Map, Shield } from "lucide-react";
+import { getDroughtReports, getUsers } from "../utils/auth";
 
 export default function NGODashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [reports, setReports] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: "📊" },
-    { id: "reports", label: "Farmer Reports", icon: "📝" }
+    { id: "reports", label: "Farmer Reports", icon: "📝" },
+    { id: "analytics", label: "Analytics", icon: "📈" }
   ];
 
   useEffect(() => {
     if (activeTab === "reports") {
       fetchReports();
+    } else if (activeTab === "analytics") {
+      fetchAnalyticsData();
     }
   }, [activeTab]);
 
@@ -33,6 +38,28 @@ export default function NGODashboard() {
       }
     } catch (error) {
       alert("An error occurred while fetching reports");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAnalyticsData = async () => {
+    setLoading(true);
+    try {
+      const [reportsResult, usersResult] = await Promise.all([
+        getDroughtReports(),
+        getUsers()
+      ]);
+      
+      if (reportsResult.success) {
+        setReports(reportsResult.reports);
+      }
+      
+      if (usersResult.success) {
+        setUsers(usersResult.users);
+      }
+    } catch (error) {
+      alert("An error occurred while fetching analytics data");
     } finally {
       setLoading(false);
     }
@@ -62,11 +89,47 @@ export default function NGODashboard() {
 
   const handleViewReport = (report) => {
     setSelectedReport(report);
+    setShowViewModal(true);
   };
 
   const handleContactFarmer = (report) => {
     const contactInfo = `Contact Information:\nName: ${report.contact_name}\nPhone: ${report.phone}${report.email ? `\nEmail: ${report.email}` : ''}`;
     alert(contactInfo);
+  };
+
+  // Analytics calculations
+  const getAnalyticsData = () => {
+    const totalReports = reports.length;
+    const totalFarmers = users.filter(u => u.role === 'farmer').length;
+    const totalNGOs = users.filter(u => u.role === 'ngo').length;
+    
+    const severityBreakdown = {
+      Mild: reports.filter(r => r.severity === 'Mild').length,
+      Moderate: reports.filter(r => r.severity === 'Moderate').length,
+      Severe: reports.filter(r => r.severity === 'Severe').length,
+      Extreme: reports.filter(r => r.severity === 'Extreme').length
+    };
+
+    const monthlyReports = {};
+    reports.forEach(report => {
+      const date = new Date(report.created_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyReports[monthKey] = (monthlyReports[monthKey] || 0) + 1;
+    });
+
+    const topLocations = {};
+    reports.forEach(report => {
+      topLocations[report.location] = (topLocations[report.location] || 0) + 1;
+    });
+
+    return {
+      totalReports,
+      totalFarmers,
+      totalNGOs,
+      severityBreakdown,
+      monthlyReports,
+      topLocations
+    };
   };
 
   const renderOverview = () => (
@@ -135,9 +198,12 @@ export default function NGODashboard() {
             <FileText className="h-5 w-5" />
             View All Reports
           </button>
-          <button className="flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors">
-            <AlertTriangle className="h-5 w-5" />
-            Emergency Response
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className="flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+          >
+            <BarChart3 className="h-5 w-5" />
+            View Analytics
           </button>
         </div>
       </div>
@@ -316,16 +382,260 @@ export default function NGODashboard() {
     </div>
   );
 
+  const renderAnalytics = () => {
+    const analytics = getAnalyticsData();
+    
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
+            <p className="text-gray-600">Comprehensive insights into drought reports and user activity</p>
+          </div>
+          <button
+            onClick={fetchAnalyticsData}
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            {loading ? "Loading..." : "Refresh Data"}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading analytics data...</p>
+          </div>
+        ) : (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Reports</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalReports}</p>
+                  </div>
+                  <div className="bg-blue-100 p-3 rounded-lg">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Farmers</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalFarmers}</p>
+                  </div>
+                  <div className="bg-green-100 p-3 rounded-lg">
+                    <Users className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total NGOs</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalNGOs}</p>
+                  </div>
+                  <div className="bg-purple-100 p-3 rounded-lg">
+                    <Shield className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Critical Cases</p>
+                    <p className="text-2xl font-bold text-red-600">{analytics.severityBreakdown.Severe + analytics.severityBreakdown.Extreme}</p>
+                  </div>
+                  <div className="bg-red-100 p-3 rounded-lg">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Severity Distribution */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Severity Distribution</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.severityBreakdown).map(([severity, count]) => (
+                    <div key={severity} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full ${getSeverityColor(severity).replace('text-', 'bg-').replace('100', '500')}`}></div>
+                        <span className="text-sm font-medium text-gray-700">{severity}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${getSeverityColor(severity).replace('text-', 'bg-').replace('100', '500')}`}
+                            style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{count}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Locations */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Affected Locations</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.topLocations)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 5)
+                    .map(([location, count]) => (
+                      <div key={location} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Map className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-700">{location}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="h-2 bg-blue-500 rounded-full"
+                              style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Monthly Trend */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Report Trend</h3>
+              <div className="space-y-4">
+                {Object.entries(analytics.monthlyReports)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .slice(-6)
+                  .map(([month, count]) => {
+                    const [year, monthNum] = month.split('-');
+                    const monthName = new Date(year, monthNum - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    return (
+                      <div key={month} className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{monthName}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="h-2 bg-green-500 rounded-full"
+                              style={{ width: `${Math.max(...Object.values(analytics.monthlyReports)) > 0 ? (count / Math.max(...Object.values(analytics.monthlyReports))) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <DashboardLayout
-      title="NGO Dashboard"
-      user={user}
-      tabs={tabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-    >
-      {activeTab === "overview" && renderOverview()}
-      {activeTab === "reports" && renderReports()}
-    </DashboardLayout>
+    <>
+      <DashboardLayout
+        title="NGO Dashboard"
+        user={user}
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "reports" && renderReports()}
+        {activeTab === "analytics" && renderAnalytics()}
+      </DashboardLayout>
+
+      {/* View Report Modal */}
+      {showViewModal && selectedReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Report Details</h3>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedReport.location}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Severity</label>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getSeverityColor(selectedReport.severity)}`}>
+                    {selectedReport.severity}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">{selectedReport.description}</p>
+              </div>
+              <div className="border-t pt-6">
+                <h4 className="text-md font-semibold text-gray-900 mb-4">Contact Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedReport.contact_name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedReport.phone}</p>
+                  </div>
+                  {selectedReport.email && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedReport.email}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date Submitted</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">{formatDate(selectedReport.created_at)}</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => handleContactFarmer(selectedReport)}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Contact Farmer
+                </button>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

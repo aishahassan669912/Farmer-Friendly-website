@@ -1,16 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/DashboardLayout";
-import { FileText, MapPin, AlertTriangle, User, Phone, Mail, Send } from "lucide-react";
-import { createDroughtReport } from "../utils/auth";
+import { FileText, MapPin, AlertTriangle, User, Phone, Mail, Calendar, BarChart3, TrendingUp, Users, Map, Shield } from "lucide-react";
+import { createDroughtReport, getDroughtReports, getUsers } from "../utils/auth";
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+  const [reports, setReports] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  // Report form state
-  const [reportForm, setReportForm] = useState({
+  const [formData, setFormData] = useState({
     location: "",
     severity: "Mild",
     description: "",
@@ -19,9 +19,43 @@ export default function FarmerDashboard() {
     email: ""
   });
 
+  const tabs = [
+    { id: "overview", label: "Overview", icon: "📊" },
+    { id: "report", label: "Report", icon: "📝" },
+    { id: "analytics", label: "Analytics", icon: "📈" }
+  ];
+
+  useEffect(() => {
+    if (activeTab === "analytics") {
+      fetchAnalyticsData();
+    }
+  }, [activeTab]);
+
+  const fetchAnalyticsData = async () => {
+    setLoading(true);
+    try {
+      const [reportsResult, usersResult] = await Promise.all([
+        getDroughtReports(),
+        getUsers()
+      ]);
+      
+      if (reportsResult.success) {
+        setReports(reportsResult.reports);
+      }
+      
+      if (usersResult.success) {
+        setUsers(usersResult.users);
+      }
+    } catch (error) {
+      alert("An error occurred while fetching analytics data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setReportForm(prev => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -29,14 +63,18 @@ export default function FarmerDashboard() {
 
   const handleSubmitReport = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    
+    if (!formData.location || !formData.description || !formData.contact_name || !formData.phone) {
+      alert("Please fill in all required fields");
+      return;
+    }
 
+    setLoading(true);
     try {
-      const result = await createDroughtReport(reportForm);
+      const result = await createDroughtReport(formData);
       if (result.success) {
         alert("Drought report submitted successfully!");
-        // Reset form
-        setReportForm({
+        setFormData({
           location: "",
           severity: "Mild",
           description: "",
@@ -48,16 +86,71 @@ export default function FarmerDashboard() {
         alert(result.message || "Failed to submit report");
       }
     } catch (error) {
-      alert("An error occurred. Please try again.");
+      alert("An error occurred while submitting the report");
     } finally {
       setLoading(false);
     }
   };
 
-  const tabs = [
-    { id: "overview", label: "Overview", icon: "📊" },
-    { id: "report", label: "Report", icon: "📝" }
-  ];
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'Mild': return 'bg-green-100 text-green-800';
+      case 'Moderate': return 'bg-yellow-100 text-yellow-800';
+      case 'Severe': return 'bg-orange-100 text-orange-800';
+      case 'Extreme': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Analytics calculations
+  const getAnalyticsData = () => {
+    const myReports = reports.filter(r => r.contact_name === user?.name || r.phone === user?.phone);
+    const totalReports = reports.length;
+    const totalFarmers = users.filter(u => u.role === 'farmer').length;
+    const totalNGOs = users.filter(u => u.role === 'ngo').length;
+    
+    const severityBreakdown = {
+      Mild: reports.filter(r => r.severity === 'Mild').length,
+      Moderate: reports.filter(r => r.severity === 'Moderate').length,
+      Severe: reports.filter(r => r.severity === 'Severe').length,
+      Extreme: reports.filter(r => r.severity === 'Extreme').length
+    };
+
+    const monthlyReports = {};
+    reports.forEach(report => {
+      const date = new Date(report.created_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyReports[monthKey] = (monthlyReports[monthKey] || 0) + 1;
+    });
+
+    const topLocations = {};
+    reports.forEach(report => {
+      topLocations[report.location] = (topLocations[report.location] || 0) + 1;
+    });
+
+    return {
+      myReports: myReports.length,
+      totalReports,
+      totalFarmers,
+      totalNGOs,
+      severityBreakdown,
+      monthlyReports,
+      topLocations,
+      myReportsList: myReports
+    };
+  };
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -72,23 +165,11 @@ export default function FarmerDashboard() {
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Reports Submitted</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <FileText className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Support Received</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
+              <p className="text-sm font-medium text-gray-600">My Reports</p>
+              <p className="text-2xl font-bold text-gray-900">{getAnalyticsData().myReports}</p>
             </div>
             <div className="bg-green-100 p-3 rounded-lg">
-              <AlertTriangle className="h-6 w-6 text-green-600" />
+              <FileText className="h-6 w-6 text-green-600" />
             </div>
           </div>
         </div>
@@ -96,11 +177,23 @@ export default function FarmerDashboard() {
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Requests</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
+              <p className="text-sm font-medium text-gray-600">Available NGOs</p>
+              <p className="text-2xl font-bold text-gray-900">{getAnalyticsData().totalNGOs}</p>
             </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Send className="h-6 w-6 text-orange-600" />
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <Shield className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Farmers</p>
+              <p className="text-2xl font-bold text-gray-900">{getAnalyticsData().totalFarmers}</p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <Users className="h-6 w-6 text-purple-600" />
             </div>
           </div>
         </div>
@@ -115,119 +208,154 @@ export default function FarmerDashboard() {
             className="flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
           >
             <FileText className="h-5 w-5" />
-            Submit Drought Report
+            Submit Report
           </button>
-          <button className="flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors">
-            <AlertTriangle className="h-5 w-5" />
-            Request Support
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className="flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+          >
+            <BarChart3 className="h-5 w-5" />
+            View Analytics
           </button>
         </div>
       </div>
 
-      {/* Information Section */}
+      {/* Drought Management Tips */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Drought Management Tips</h3>
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="bg-green-100 p-2 rounded-lg">
-              <MapPin className="h-4 w-4 text-green-600" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <div>
+                <h4 className="font-medium text-gray-900">Water Conservation</h4>
+                <p className="text-sm text-gray-600">Implement drip irrigation and rainwater harvesting systems</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-medium text-gray-900">Water Conservation</h4>
-              <p className="text-sm text-gray-600">Implement efficient irrigation systems and collect rainwater for better water management.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <AlertTriangle className="h-4 w-4 text-blue-600" />
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900">Crop Selection</h4>
-              <p className="text-sm text-gray-600">Choose drought-resistant crops and consider crop rotation to maintain soil health.</p>
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              <div>
+                <h4 className="font-medium text-gray-900">Crop Selection</h4>
+                <p className="text-sm text-gray-600">Choose drought-resistant crop varieties</p>
+              </div>
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-orange-100 p-2 rounded-lg">
-              <User className="h-4 w-4 text-orange-600" />
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+              <div>
+                <h4 className="font-medium text-gray-900">Soil Management</h4>
+                <p className="text-sm text-gray-600">Use mulch and organic matter to retain soil moisture</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-medium text-gray-900">Community Support</h4>
-              <p className="text-sm text-gray-600">Connect with local NGOs and other farmers for support and resources.</p>
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+              <div>
+                <h4 className="font-medium text-gray-900">Seek Support</h4>
+                <p className="text-sm text-gray-600">Contact NGOs and government agencies for assistance</p>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* My Recent Reports */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">My Recent Reports</h3>
+        {getAnalyticsData().myReportsList.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No reports submitted yet. Submit your first report to get help!</p>
+        ) : (
+          <div className="space-y-4">
+            {getAnalyticsData().myReportsList.slice(0, 3).map((report) => (
+              <div key={report.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h4 className="font-medium text-gray-900">{report.location}</h4>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(report.severity)}`}>
+                        {report.severity}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-2">{report.description}</p>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDate(report.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 
   const renderReport = () => (
-    <div className="max-w-2xl mx-auto">
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">Submit Drought Report</h2>
+        <p className="text-gray-600">Report drought conditions to get assistance from NGOs and support organizations</p>
+      </div>
+
+      {/* Report Form */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div className="text-center mb-6">
-          <div className="bg-red-100 p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <AlertTriangle className="h-8 w-8 text-red-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Submit Drought Report</h2>
-          <p className="text-gray-600">Help us understand your situation so we can provide better support</p>
-        </div>
-
         <form onSubmit={handleSubmitReport} className="space-y-6">
-          {/* Location */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Location <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="location"
-              value={reportForm.location}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter your farm location or region"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleInputChange}
+                placeholder="Enter your farm location"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Severity Level <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="severity"
+                value={formData.severity}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                required
+              >
+                <option value="Mild">Mild</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Severe">Severe</option>
+                <option value="Extreme">Extreme</option>
+              </select>
+            </div>
           </div>
 
-          {/* Severity */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Severity of Drought <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="severity"
-              value={reportForm.severity}
-              onChange={handleInputChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              <option value="Mild">Mild</option>
-              <option value="Moderate">Moderate</option>
-              <option value="Severe">Severe</option>
-              <option value="Extreme">Extreme</option>
-            </select>
-          </div>
-
-          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Description <span className="text-red-500">*</span>
             </label>
             <textarea
               name="description"
-              value={reportForm.description}
+              value={formData.description}
               onChange={handleInputChange}
-              required
               rows={4}
-              placeholder="Please describe your drought situation, impact on crops, and any specific challenges you're facing..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              placeholder="Describe the drought conditions, crop damage, and specific challenges you're facing..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              required
             />
           </div>
 
-          {/* Contact Information */}
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-            
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Full Name <span className="text-red-500">*</span>
@@ -235,14 +363,13 @@ export default function FarmerDashboard() {
                 <input
                   type="text"
                   name="contact_name"
-                  value={reportForm.contact_name}
+                  value={formData.contact_name}
                   onChange={handleInputChange}
-                  required
                   placeholder="Your full name"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Phone Number <span className="text-red-500">*</span>
@@ -250,14 +377,13 @@ export default function FarmerDashboard() {
                 <input
                   type="tel"
                   name="phone"
-                  value={reportForm.phone}
+                  value={formData.phone}
                   onChange={handleInputChange}
-                  required
                   placeholder="Your phone number"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email (Optional)
@@ -265,46 +391,193 @@ export default function FarmerDashboard() {
                 <input
                   type="email"
                   name="email"
-                  value={reportForm.email}
+                  value={formData.email}
                   onChange={handleInputChange}
                   placeholder="Your email address"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="flex gap-4 pt-4">
+          <div className="flex justify-end">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-2 px-6 rounded-lg font-medium transition-colors"
             >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="h-5 w-5" />
-                  Submit Report
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("overview")}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-            >
-              Cancel
+              {loading ? "Submitting..." : "Submit Report"}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
+
+  const renderAnalytics = () => {
+    const analytics = getAnalyticsData();
+    
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
+            <p className="text-gray-600">Insights into drought reports and community statistics</p>
+          </div>
+          <button
+            onClick={fetchAnalyticsData}
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            {loading ? "Loading..." : "Refresh Data"}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading analytics data...</p>
+          </div>
+        ) : (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">My Reports</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.myReports}</p>
+                  </div>
+                  <div className="bg-green-100 p-3 rounded-lg">
+                    <FileText className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Reports</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalReports}</p>
+                  </div>
+                  <div className="bg-blue-100 p-3 rounded-lg">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Available NGOs</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalNGOs}</p>
+                  </div>
+                  <div className="bg-purple-100 p-3 rounded-lg">
+                    <Shield className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Critical Cases</p>
+                    <p className="text-2xl font-bold text-red-600">{analytics.severityBreakdown.Severe + analytics.severityBreakdown.Extreme}</p>
+                  </div>
+                  <div className="bg-red-100 p-3 rounded-lg">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Severity Distribution */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Severity Distribution</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.severityBreakdown).map(([severity, count]) => (
+                    <div key={severity} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full ${getSeverityColor(severity).replace('text-', 'bg-').replace('100', '500')}`}></div>
+                        <span className="text-sm font-medium text-gray-700">{severity}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${getSeverityColor(severity).replace('text-', 'bg-').replace('100', '500')}`}
+                            style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{count}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Locations */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Affected Locations</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.topLocations)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 5)
+                    .map(([location, count]) => (
+                      <div key={location} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Map className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-700">{location}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="h-2 bg-green-500 rounded-full"
+                              style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Monthly Trend */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Report Trend</h3>
+              <div className="space-y-4">
+                {Object.entries(analytics.monthlyReports)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .slice(-6)
+                  .map(([month, count]) => {
+                    const [year, monthNum] = month.split('-');
+                    const monthName = new Date(year, monthNum - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    return (
+                      <div key={month} className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{monthName}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="h-2 bg-green-500 rounded-full"
+                              style={{ width: `${Math.max(...Object.values(analytics.monthlyReports)) > 0 ? (count / Math.max(...Object.values(analytics.monthlyReports))) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <DashboardLayout
@@ -316,6 +589,7 @@ export default function FarmerDashboard() {
     >
       {activeTab === "overview" && renderOverview()}
       {activeTab === "report" && renderReport()}
+      {activeTab === "analytics" && renderAnalytics()}
     </DashboardLayout>
   );
 }

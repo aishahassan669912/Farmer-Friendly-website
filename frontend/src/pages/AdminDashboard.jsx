@@ -43,7 +43,8 @@ export default function AdminDashboard() {
   const tabs = [
     { id: "overview", label: "Overview", icon: "📊" },
     { id: "reports", label: "Manage Reports", icon: "📝" },
-    { id: "users", label: "Manage Users", icon: "👥" }
+    { id: "users", label: "Manage Users", icon: "👥" },
+    { id: "analytics", label: "Analytics", icon: "📈" }
   ];
 
   useEffect(() => {
@@ -51,8 +52,32 @@ export default function AdminDashboard() {
       fetchReports();
     } else if (activeTab === "users") {
       fetchUsers();
+    } else if (activeTab === "analytics") {
+      fetchAnalyticsData();
     }
   }, [activeTab]);
+
+  const fetchAnalyticsData = async () => {
+    setLoading(true);
+    try {
+      const [reportsResult, usersResult] = await Promise.all([
+        getDroughtReports(),
+        getUsers()
+      ]);
+      
+      if (reportsResult.success) {
+        setReports(reportsResult.reports);
+      }
+      
+      if (usersResult.success) {
+        setUsers(usersResult.users);
+      }
+    } catch (error) {
+      alert("An error occurred while fetching analytics data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchReports = async () => {
     setLoading(true);
@@ -208,6 +233,52 @@ export default function AdminDashboard() {
 
   const isAdminUser = (userEmail) => {
     return userEmail === 'agriaisha466@gmail.com';
+  };
+
+  // Analytics calculations
+  const getAnalyticsData = () => {
+    const totalReports = reports.length;
+    const totalUsers = users.length;
+    const totalFarmers = users.filter(u => u.role === 'farmer').length;
+    const totalNGOs = users.filter(u => u.role === 'ngo').length;
+    const totalAdmins = users.filter(u => u.role === 'admin').length;
+    
+    const severityBreakdown = {
+      Mild: reports.filter(r => r.severity === 'Mild').length,
+      Moderate: reports.filter(r => r.severity === 'Moderate').length,
+      Severe: reports.filter(r => r.severity === 'Severe').length,
+      Extreme: reports.filter(r => r.severity === 'Extreme').length
+    };
+
+    const userRoleBreakdown = {
+      farmer: totalFarmers,
+      ngo: totalNGOs,
+      admin: totalAdmins
+    };
+
+    const monthlyReports = {};
+    reports.forEach(report => {
+      const date = new Date(report.created_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyReports[monthKey] = (monthlyReports[monthKey] || 0) + 1;
+    });
+
+    const topLocations = {};
+    reports.forEach(report => {
+      topLocations[report.location] = (topLocations[report.location] || 0) + 1;
+    });
+
+    return {
+      totalReports,
+      totalUsers,
+      totalFarmers,
+      totalNGOs,
+      totalAdmins,
+      severityBreakdown,
+      userRoleBreakdown,
+      monthlyReports,
+      topLocations
+    };
   };
 
   const renderOverview = () => (
@@ -609,6 +680,218 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const renderAnalytics = () => {
+    const analytics = getAnalyticsData();
+    
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">System Analytics</h2>
+            <p className="text-gray-600">Comprehensive insights into platform usage and drought reports</p>
+          </div>
+          <button
+            onClick={fetchAnalyticsData}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            {loading ? "Loading..." : "Refresh Data"}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading analytics data...</p>
+          </div>
+        ) : (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Users</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalUsers}</p>
+                  </div>
+                  <div className="bg-purple-100 p-3 rounded-lg">
+                    <Users className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Reports</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalReports}</p>
+                  </div>
+                  <div className="bg-blue-100 p-3 rounded-lg">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Active NGOs</p>
+                    <p className="text-2xl font-bold text-gray-900">{analytics.totalNGOs}</p>
+                  </div>
+                  <div className="bg-green-100 p-3 rounded-lg">
+                    <Shield className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Critical Cases</p>
+                    <p className="text-2xl font-bold text-red-600">{analytics.severityBreakdown.Severe + analytics.severityBreakdown.Extreme}</p>
+                  </div>
+                  <div className="bg-red-100 p-3 rounded-lg">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* User Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">User Distribution by Role</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.userRoleBreakdown).map(([role, count]) => (
+                    <div key={role} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full ${getRoleColor(role).replace('text-', 'bg-').replace('100', '500')}`}></div>
+                        <span className="text-sm font-medium text-gray-700 capitalize">{role}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${getRoleColor(role).replace('text-', 'bg-').replace('100', '500')}`}
+                            style={{ width: `${analytics.totalUsers > 0 ? (count / analytics.totalUsers) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{count}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Severity Distribution */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Severity Distribution</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.severityBreakdown).map(([severity, count]) => (
+                    <div key={severity} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full ${getSeverityColor(severity).replace('text-', 'bg-').replace('100', '500')}`}></div>
+                        <span className="text-sm font-medium text-gray-700">{severity}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${getSeverityColor(severity).replace('text-', 'bg-').replace('100', '500')}`}
+                            style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{count}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Top Locations and Monthly Trend */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Top Locations */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Affected Locations</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.topLocations)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 5)
+                    .map(([location, count]) => (
+                      <div key={location} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Map className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-700">{location}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="h-2 bg-purple-500 rounded-full"
+                              style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Monthly Trend */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Report Trend</h3>
+                <div className="space-y-4">
+                  {Object.entries(analytics.monthlyReports)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .slice(-6)
+                    .map(([month, count]) => {
+                      const [year, monthNum] = month.split('-');
+                      const monthName = new Date(year, monthNum - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      return (
+                        <div key={month} className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">{monthName}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-32 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="h-2 bg-purple-500 rounded-full"
+                                style={{ width: `${Math.max(...Object.values(analytics.monthlyReports)) > 0 ? (count / Math.max(...Object.values(analytics.monthlyReports))) * 100 : 0}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-900">{count}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Growth */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Platform Growth Metrics</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">{analytics.totalUsers}</p>
+                  <p className="text-sm text-gray-600">Total Registered Users</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-600">{analytics.totalReports}</p>
+                  <p className="text-sm text-gray-600">Total Reports Submitted</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    {analytics.totalReports > 0 ? Math.round((analytics.totalReports / analytics.totalUsers) * 100) : 0}%
+                  </p>
+                  <p className="text-sm text-gray-600">Engagement Rate</p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <DashboardLayout
@@ -621,6 +904,7 @@ export default function AdminDashboard() {
         {activeTab === "overview" && renderOverview()}
         {activeTab === "reports" && renderReports()}
         {activeTab === "users" && renderUsers()}
+        {activeTab === "analytics" && renderAnalytics()}
       </DashboardLayout>
 
       {/* View Report Modal */}
