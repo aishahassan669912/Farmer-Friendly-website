@@ -27,7 +27,8 @@ def init_database():
                 name='Admin',
                 email='agriaisha466@gmail.com',
                 password=generate_password_hash('aisha123'),
-                role='admin'
+                role='admin',
+                email_verified=True
             )
             db.session.add(admin_user)
             db.session.commit()

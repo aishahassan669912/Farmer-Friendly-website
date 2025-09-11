@@ -46,8 +46,10 @@ const SignupNGO = () => {
       });
 
       if (result.success) {
-        alert("Account created successfully! Please login to access your dashboard.");
-        navigate('/login');
+        // Redirect to email confirmation page
+        navigate('/email-confirmation', {
+          state: { email: formData.email }
+        });
       } else {
         alert(result.message);
       }

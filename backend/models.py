@@ -16,6 +16,7 @@ class User(db.Model):
     location = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    email_verified = db.Column(db.Boolean, default=False)
     
     # Farmer-specific fields
     farm_size = db.Column(db.Float)  # in acres
@@ -49,6 +50,7 @@ class User(db.Model):
             'location': self.location,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_active': self.is_active,
+            'email_verified': self.email_verified,
             'farm_size': self.farm_size,
             'drought_impact': self.drought_impact,
             'organization_name': self.organization_name,
@@ -117,6 +119,36 @@ class PasswordReset(db.Model):
     
     def __repr__(self):
         return f'<PasswordReset {self.email}>'
+
+class EmailConfirmation(db.Model):
+    """Email confirmation codes for user registration"""
+    __tablename__ = 'email_confirmations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    code = db.Column(db.String(7), nullable=False)  # 7-digit confirmation code
+    user_data = db.Column(db.Text, nullable=False)  # JSON string of user data
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False)
+    
+    def __init__(self, **kwargs):
+        # Set created_at first
+        if 'created_at' not in kwargs:
+            kwargs['created_at'] = datetime.datetime.utcnow()
+        
+        # Calculate expires_at (30 minutes for registration)
+        created_at = kwargs['created_at']
+        kwargs['expires_at'] = created_at + datetime.timedelta(minutes=30)
+        
+        super(EmailConfirmation, self).__init__(**kwargs)
+    
+    def is_expired(self):
+        """Check if the confirmation code has expired"""
+        return datetime.datetime.utcnow() > self.expires_at
+    
+    def __repr__(self):
+        return f'<EmailConfirmation {self.email}>'
 
 class SupportRequest(db.Model):
     """Support requests from farmers to NGOs"""

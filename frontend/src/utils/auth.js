@@ -3,7 +3,7 @@ const API_BASE_URL = 'http://localhost:5004/api';
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
-  
+
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -16,11 +16,11 @@ const apiCall = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.message || 'API request failed');
     }
-    
+
     return data;
   } catch (error) {
     console.error('API Error:', error);
@@ -40,8 +40,35 @@ export const sendResetCode = async (email) => {
       method: 'POST',
       body: JSON.stringify({ email })
     });
-    
+
     return { success: true, message: 'Reset code sent to your email' };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+// Email confirmation functions
+export const confirmEmail = async (email, code) => {
+  try {
+    const result = await apiCall('/auth/confirm-email', {
+      method: 'POST',
+      body: JSON.stringify({ email, code })
+    });
+
+    return result;
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+export const resendConfirmation = async (email) => {
+  try {
+    const result = await apiCall('/auth/resend-confirmation', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+
+    return result;
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -54,7 +81,7 @@ export const verifyResetCode = async (email, code) => {
       method: 'POST',
       body: JSON.stringify({ email, code })
     });
-    
+
     return { success: true, message: 'Code verified successfully' };
   } catch (error) {
     return { success: false, message: error.message };
@@ -68,12 +95,12 @@ export const loginUser = async (email, password) => {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
-    
+
     // Store token
     if (result.token) {
       localStorage.setItem('token', result.token);
     }
-    
+
     return {
       success: true,
       user: result.user,
@@ -94,12 +121,12 @@ export const signupUser = async (userData) => {
       method: 'POST',
       body: JSON.stringify(userData)
     });
-    
+
     // Store token
     if (result.token) {
       localStorage.setItem('token', result.token);
     }
-    
+
     return {
       success: true,
       user: result.user,
@@ -120,7 +147,7 @@ export const resetPassword = async (email, code, newPassword) => {
       method: 'POST',
       body: JSON.stringify({ email, code, newPassword })
     });
-    
+
     return {
       success: true,
       message: 'Password reset successfully'
@@ -140,7 +167,7 @@ export const createDroughtReport = async (reportData) => {
       method: 'POST',
       body: JSON.stringify(reportData)
     });
-    
+
     return {
       success: true,
       message: 'Drought report submitted successfully'
@@ -189,7 +216,7 @@ export const updateDroughtReport = async (reportId, reportData) => {
       method: 'PUT',
       body: JSON.stringify(reportData)
     });
-    
+
     return {
       success: true,
       message: 'Report updated successfully'
@@ -207,7 +234,7 @@ export const deleteDroughtReport = async (reportId) => {
     const result = await apiCall(`/drought-reports/${reportId}`, {
       method: 'DELETE'
     });
-    
+
     return {
       success: true,
       message: 'Report deleted successfully'
@@ -236,13 +263,28 @@ export const getUsers = async () => {
   }
 };
 
+export const getUserStats = async () => {
+  try {
+    const result = await apiCall('/users/stats');
+    return {
+      success: true,
+      stats: result.stats
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
 export const updateUser = async (userId, userData) => {
   try {
     const result = await apiCall(`/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(userData)
     });
-    
+
     return {
       success: true,
       message: 'User updated successfully'
@@ -260,7 +302,7 @@ export const deleteUser = async (userId) => {
     const result = await apiCall(`/users/${userId}`, {
       method: 'DELETE'
     });
-    
+
     return {
       success: true,
       message: 'User deleted successfully'
@@ -312,7 +354,7 @@ export const createSupportRequest = async (requestData) => {
       method: 'POST',
       body: JSON.stringify(requestData)
     });
-    
+
     return {
       success: true,
       message: 'Support request created successfully'
@@ -332,7 +374,7 @@ export const updateRequestStatus = async (requestId, status) => {
       method: 'PUT',
       body: JSON.stringify({ status })
     });
-    
+
     return {
       success: true,
       message: 'Request status updated successfully'

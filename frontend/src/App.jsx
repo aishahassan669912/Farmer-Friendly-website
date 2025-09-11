@@ -12,6 +12,7 @@ import SignupFarmer from "./pages/SignupFarmer";
 import SignupNGO from "./pages/SignupNGO";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
+import EmailConfirmation from "./pages/EmailConfirmation";
 import FarmerDashboard from "./pages/FarmerDashboard";
 import NGODashboard from "./pages/NGODashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -32,6 +33,7 @@ function App() {
             <Route path="/signup-ngo" element={<SignupNGO />} />
             <Route path="/login" element={<Login />} />
             <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/email-confirmation" element={<EmailConfirmation />} />
             <Route path="/farmer-dashboard" element={<FarmerDashboard />} />
             <Route path="/ngo-dashboard" element={<NGODashboard />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />

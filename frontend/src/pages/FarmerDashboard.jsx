@@ -2,13 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/DashboardLayout";
 import { FileText, MapPin, AlertTriangle, User, Phone, Mail, Calendar, BarChart3, TrendingUp, Users, Map, Shield } from "lucide-react";
-import { createDroughtReport, getDroughtReports, getUsers } from "../utils/auth";
+import { createDroughtReport, getDroughtReports, getUserStats } from "../utils/auth";
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [reports, setReports] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [userStats, setUserStats] = useState({});
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     location: "",
@@ -34,17 +34,17 @@ export default function FarmerDashboard() {
   const fetchAnalyticsData = async () => {
     setLoading(true);
     try {
-      const [reportsResult, usersResult] = await Promise.all([
+      const [reportsResult, statsResult] = await Promise.all([
         getDroughtReports(),
-        getUsers()
+        getUserStats()
       ]);
-      
+
       if (reportsResult.success) {
         setReports(reportsResult.reports);
       }
-      
-      if (usersResult.success) {
-        setUsers(usersResult.users);
+
+      if (statsResult.success) {
+        setUserStats(statsResult.stats);
       }
     } catch (error) {
       alert("An error occurred while fetching analytics data");
@@ -63,7 +63,7 @@ export default function FarmerDashboard() {
 
   const handleSubmitReport = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.location || !formData.description || !formData.contact_name || !formData.phone) {
       alert("Please fill in all required fields");
       return;
@@ -118,9 +118,9 @@ export default function FarmerDashboard() {
   const getAnalyticsData = () => {
     const myReports = reports.filter(r => r.contact_name === user?.name || r.phone === user?.phone);
     const totalReports = reports.length;
-    const totalFarmers = users.filter(u => u.role === 'farmer').length;
-    const totalNGOs = users.filter(u => u.role === 'ngo').length;
-    
+    const totalFarmers = userStats.farmers || 0;
+    const totalNGOs = userStats.ngos || 0;
+
     const severityBreakdown = {
       Mild: reports.filter(r => r.severity === 'Mild').length,
       Moderate: reports.filter(r => r.severity === 'Moderate').length,
@@ -416,7 +416,7 @@ export default function FarmerDashboard() {
 
   const renderAnalytics = () => {
     const analytics = getAnalyticsData();
-    
+
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -506,7 +506,7 @@ export default function FarmerDashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className={`h-2 rounded-full ${getSeverityColor(severity).replace('text-', 'bg-').replace('100', '500')}`}
                             style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
                           ></div>
@@ -523,7 +523,7 @@ export default function FarmerDashboard() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Affected Locations</h3>
                 <div className="space-y-4">
                   {Object.entries(analytics.topLocations)
-                    .sort(([,a], [,b]) => b - a)
+                    .sort(([, a], [, b]) => b - a)
                     .slice(0, 5)
                     .map(([location, count]) => (
                       <div key={location} className="flex items-center justify-between">
@@ -533,7 +533,7 @@ export default function FarmerDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-32 bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className="h-2 bg-green-500 rounded-full"
                               style={{ width: `${analytics.totalReports > 0 ? (count / analytics.totalReports) * 100 : 0}%` }}
                             ></div>
@@ -561,7 +561,7 @@ export default function FarmerDashboard() {
                         <span className="text-sm font-medium text-gray-700">{monthName}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-32 bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className="h-2 bg-green-500 rounded-full"
                               style={{ width: `${Math.max(...Object.values(analytics.monthlyReports)) > 0 ? (count / Math.max(...Object.values(analytics.monthlyReports))) * 100 : 0}%` }}
                             ></div>

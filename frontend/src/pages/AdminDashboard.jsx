@@ -22,6 +22,7 @@ import {
   deleteDroughtReport,
   updateDroughtReport,
   getUsers,
+  getUserStats,
   deleteUser,
   updateUser
 } from "../utils/auth";
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [reports, setReports] = useState([]);
   const [users, setUsers] = useState([]);
+  const [userStats, setUserStats] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);

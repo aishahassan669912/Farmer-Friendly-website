@@ -3,15 +3,11 @@ import jwt
 import random
 import string
 import datetime
+import json
 from functools import wraps
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User, PasswordReset, DroughtReport
-import jwt
-import datetime
-import random
-import string
-from functools import wraps
+from models import db, User, PasswordReset, DroughtReport, EmailConfirmation
 
 auth_bp = Blueprint('auth', __name__)
 reports_bp = Blueprint('reports', __name__)
@@ -81,6 +77,62 @@ def send_reset_email(email, code):
         return False
 
 # Auth routes
+def send_confirmation_email(email, code, user_data):
+    """Send email confirmation code to user"""
+    try:
+        from flask_mail import Message
+        from app import mail
+        
+        msg = Message(
+            subject='Email Confirmation - Farmer Friendly Platform',
+            recipients=[email],
+            sender=current_app.config['MAIL_USERNAME']
+        )
+        
+        role = user_data.get('role', 'user')
+        name = user_data.get('name', 'User')
+        
+        msg.html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">Farmer Friendly Platform</h1>
+                <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">Email Confirmation</p>
+            </div>
+            
+            <div style="padding: 30px; background: #f8f9fa;">
+                <h2 style="color: #333; margin-bottom: 20px;">Hello {name}!</h2>
+                
+                <p style="color: #666; font-size: 16px; line-height: 1.6;">
+                    Thank you for registering as a <strong>{role.title()}</strong> on our Farmer Friendly Platform. 
+                    To complete your registration, please use the confirmation code below:
+                </p>
+                
+                <div style="background: white; border: 2px solid #667eea; border-radius: 10px; padding: 20px; text-align: center; margin: 30px 0;">
+                    <h3 style="color: #667eea; margin: 0; font-size: 32px; letter-spacing: 5px;">{code}</h3>
+                </div>
+                
+                <p style="color: #666; font-size: 14px; line-height: 1.6;">
+                    <strong>Important:</strong>
+                    <br>• This code will expire in 30 minutes
+                    <br>• Enter this code in the confirmation form to activate your account
+                    <br>• If you didn't register for this account, please ignore this email
+                </p>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <p style="color: #999; font-size: 12px; margin: 0;">
+                        This is an automated message. Please do not reply to this email.
+                    </p>
+                </div>
+            </div>
+        </div>
+        """
+        
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -88,21 +140,169 @@ def register():
     if not data or not data.get('email') or not data.get('password') or not data.get('name'):
         return jsonify({'success': False, 'message': 'Missing required fields'}), 400
     
+    # Check if email already exists
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'success': False, 'message': 'Email already registered'}), 400
     
-    hashed_password = generate_password_hash(data['password'])
-    user = User(
-        name=data['name'],
+    # Check if there's already a pending confirmation for this email
+    existing_confirmation = EmailConfirmation.query.filter_by(
+        email=data['email'], 
+        used=False
+    ).first()
+    
+    if existing_confirmation and not existing_confirmation.is_expired():
+        return jsonify({'success': False, 'message': 'Confirmation email already sent. Please check your email or wait for it to expire.'}), 400
+    
+    # Generate 7-digit confirmation code
+    confirmation_code = ''.join(random.choices(string.digits, k=7))
+    
+    # Store user data and confirmation code
+    user_data = {
+        'name': data['name'],
+        'email': data['email'],
+        'password': data['password'],
+        'role': data.get('role', 'farmer'),
+        'phone': data.get('phone'),
+        'location': data.get('location'),
+        'farm_size': data.get('farm_size'),
+        'drought_impact': data.get('drought_impact'),
+        'organization_name': data.get('organization_name'),
+        'contact_person': data.get('contact_person'),
+        'organization_type': data.get('organization_type'),
+        'focus_areas': data.get('focus_areas'),
+        'description': data.get('description')
+    }
+    
+    # Create email confirmation record
+    confirmation = EmailConfirmation(
         email=data['email'],
-        password=hashed_password,
-        role=data.get('role', 'farmer')
+        code=confirmation_code,
+        user_data=json.dumps(user_data)
     )
     
-    db.session.add(user)
+    # Remove any existing confirmations for this email
+    EmailConfirmation.query.filter_by(email=data['email']).delete()
+    
+    db.session.add(confirmation)
     db.session.commit()
     
-    return jsonify({'success': True, 'message': 'User registered successfully'})
+    # Send confirmation email
+    if send_confirmation_email(data['email'], confirmation_code, user_data):
+        return jsonify({
+            'success': True, 
+            'message': 'Confirmation email sent. Please check your email and enter the 7-digit code to complete registration.',
+            'email': data['email']
+        })
+    else:
+        # If email sending fails, clean up the confirmation record
+        db.session.delete(confirmation)
+        db.session.commit()
+        return jsonify({'success': False, 'message': 'Failed to send confirmation email. Please try again.'}), 500
+
+@auth_bp.route('/confirm-email', methods=['POST'])
+def confirm_email():
+    data = request.get_json()
+    
+    if not data or not data.get('email') or not data.get('code'):
+        return jsonify({'success': False, 'message': 'Missing email or confirmation code'}), 400
+    
+    # Find the confirmation record
+    confirmation = EmailConfirmation.query.filter_by(
+        email=data['email'],
+        code=data['code'],
+        used=False
+    ).first()
+    
+    if not confirmation:
+        return jsonify({'success': False, 'message': 'Invalid confirmation code'}), 400
+    
+    if confirmation.is_expired():
+        return jsonify({'success': False, 'message': 'Confirmation code has expired'}), 400
+    
+    try:
+        # Parse user data
+        user_data = json.loads(confirmation.user_data)
+        
+        # Check if user already exists (shouldn't happen, but safety check)
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'success': False, 'message': 'User already exists'}), 400
+        
+        # Create the user
+        hashed_password = generate_password_hash(user_data['password'])
+        user = User(
+            name=user_data['name'],
+            email=user_data['email'],
+            password=hashed_password,
+            role=user_data['role'],
+            phone=user_data.get('phone'),
+            location=user_data.get('location'),
+            farm_size=user_data.get('farm_size'),
+            drought_impact=user_data.get('drought_impact'),
+            organization_name=user_data.get('organization_name'),
+            contact_person=user_data.get('contact_person'),
+            organization_type=user_data.get('organization_type'),
+            focus_areas=user_data.get('focus_areas'),
+            description=user_data.get('description'),
+            email_verified=True
+        )
+        
+        db.session.add(user)
+        
+        # Mark confirmation as used
+        confirmation.used = True
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Email confirmed successfully! You can now log in.',
+            'user': user.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Failed to confirm email. Please try again.'}), 500
+
+@auth_bp.route('/resend-confirmation', methods=['POST'])
+def resend_confirmation():
+    data = request.get_json()
+    
+    if not data or not data.get('email'):
+        return jsonify({'success': False, 'message': 'Email is required'}), 400
+    
+    # Check if user already exists
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'success': False, 'message': 'User already registered'}), 400
+    
+    # Find existing confirmation
+    confirmation = EmailConfirmation.query.filter_by(
+        email=data['email'],
+        used=False
+    ).first()
+    
+    if not confirmation:
+        return jsonify({'success': False, 'message': 'No pending confirmation found for this email'}), 400
+    
+    if not confirmation.is_expired():
+        return jsonify({'success': False, 'message': 'Confirmation email already sent recently. Please wait before requesting another.'}), 400
+    
+    # Generate new code
+    new_code = ''.join(random.choices(string.digits, k=7))
+    confirmation.code = new_code
+    confirmation.created_at = datetime.datetime.utcnow()
+    confirmation.expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=30)
+    
+    db.session.commit()
+    
+    # Send new confirmation email
+    user_data = json.loads(confirmation.user_data)
+    if send_confirmation_email(data['email'], new_code, user_data):
+        return jsonify({
+            'success': True,
+            'message': 'New confirmation email sent. Please check your email.'
+        })
+    else:
+        return jsonify({'success': False, 'message': 'Failed to send confirmation email. Please try again.'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -114,6 +314,10 @@ def login():
     user = User.query.filter_by(email=data['email']).first()
     
     if user and check_password_hash(user.password, data['password']):
+        # Check if email is verified
+        if not user.email_verified:
+            return jsonify({'success': False, 'message': 'Please verify your email before logging in. Check your email for the confirmation code.'}), 401
+        
         token = jwt.encode({
             'user_id': user.id,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
@@ -286,6 +490,29 @@ def get_users(current_user):
     return jsonify({
         'success': True,
         'users': [user.to_dict() for user in users]
+    })
+
+@users_bp.route('/users/stats', methods=['GET'])
+@token_required
+def get_user_stats(current_user):
+    """Get user statistics for analytics - accessible by all authenticated users"""
+    users = User.query.all()
+    
+    # Calculate statistics
+    total_users = len(users)
+    farmers = len([u for u in users if u.role == 'farmer'])
+    ngos = len([u for u in users if u.role == 'ngo'])
+    admins = len([u for u in users if u.role == 'admin'])
+    
+    # Return only statistics, not full user data
+    return jsonify({
+        'success': True,
+        'stats': {
+            'total_users': total_users,
+            'farmers': farmers,
+            'ngos': ngos,
+            'admins': admins
+        }
     })
 
 @users_bp.route('/users/<int:user_id>', methods=['PUT'])

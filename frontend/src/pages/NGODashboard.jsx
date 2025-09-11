@@ -2,13 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/DashboardLayout";
 import { FileText, MapPin, AlertTriangle, User, Phone, Mail, Calendar, Eye, PhoneCall, X, BarChart3, TrendingUp, Users, Map, Shield } from "lucide-react";
-import { getDroughtReports, getUsers } from "../utils/auth";
+import { getDroughtReports, getUserStats } from "../utils/auth";
 
 export default function NGODashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [reports, setReports] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [userStats, setUserStats] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -46,17 +46,17 @@ export default function NGODashboard() {
   const fetchAnalyticsData = async () => {
     setLoading(true);
     try {
-      const [reportsResult, usersResult] = await Promise.all([
+      const [reportsResult, statsResult] = await Promise.all([
         getDroughtReports(),
-        getUsers()
+        getUserStats()
       ]);
       
       if (reportsResult.success) {
         setReports(reportsResult.reports);
       }
       
-      if (usersResult.success) {
-        setUsers(usersResult.users);
+      if (statsResult.success) {
+        setUserStats(statsResult.stats);
       }
     } catch (error) {
       alert("An error occurred while fetching analytics data");
@@ -100,8 +100,8 @@ export default function NGODashboard() {
   // Analytics calculations
   const getAnalyticsData = () => {
     const totalReports = reports.length;
-    const totalFarmers = users.filter(u => u.role === 'farmer').length;
-    const totalNGOs = users.filter(u => u.role === 'ngo').length;
+    const totalFarmers = userStats.farmers || 0;
+    const totalNGOs = userStats.ngos || 0;
     
     const severityBreakdown = {
       Mild: reports.filter(r => r.severity === 'Mild').length,
